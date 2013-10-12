@@ -1,7 +1,7 @@
 package golink
 
 import (
-
+	"time"
 )
 
 type Result struct {
@@ -24,6 +24,8 @@ func (q *Queue) Run() {
 		select {
 		case url := <-q.in:
 			q.urls = append(q.urls, url)
+
+			time.Sleep(10 * time.Second)
 			q.out <- Result{
 				URL: url,
 				Determination: "TEST",

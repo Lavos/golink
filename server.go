@@ -27,10 +27,10 @@ type cacheResponse struct {
 }
 
 func (a *Application) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	resp := cacheRequest{r.URL.String(), make(chan cacheResponse)}
-	a.hitcache <- resp
+	req := cacheRequest{r.URL.String(), make(chan cacheResponse)}
+	a.hitcache <- req
 
-	pair := <-resp.responseChan
+	pair := <-req.responseChan
 
 	if pair.success {
 		log.Print("Hey, I have this value!")
@@ -41,7 +41,7 @@ func (a *Application) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		log.Print("wow, this is brand new.")
 
 		b, _ := json.Marshal(Result{
-			URL: resp.URL,
+			URL: req.URL,
 			Status: "queued",
 		})
 		w.Write(b)
