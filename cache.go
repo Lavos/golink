@@ -2,6 +2,7 @@ package golink
 
 import (
 	"log"
+	"github.com/Lavos/golink/validators"
 )
 
 type Result struct {
@@ -16,7 +17,7 @@ type Cache struct {
 	urls map[string]Result
 
 	query chan cacheRequest
-	fill chan Validation
+	fill chan validators.Validation
 }
 
 type cacheRequest struct {
@@ -37,12 +38,12 @@ func (c *Cache) Hit(url string) Result {
 }
 
 func (c *Cache) validateAll(url string) {
-	for _, v := range Validators {
+	for _, v := range validators.Validators {
 		c.validateAgainst(v, url)
 	}
 }
 
-func (c *Cache) validateAgainst(v Validator, url string) {
+func (c *Cache) validateAgainst(v validators.Validator, url string) {
 	go v.Validate(url, c.fill)
 }
 
@@ -57,6 +58,7 @@ func (c *Cache) run() {
 					Status: "validating",
 				}
 
+				c.validateAll(request.URL)
 			}
 
 			request.response <- c.urls[request.URL]
@@ -67,7 +69,7 @@ func (c *Cache) run() {
 
 			current.Validations[v.ValidatorKey] = v.Success
 
-			if len(current.Validations) == len(Validators) {
+			if len(current.Validations) == len(validators.Validators) {
 				current.Status = "done"
 
 				d := "accepted"
@@ -92,7 +94,7 @@ func newCache () *Cache {
 	c := &Cache{
 		urls: make(map[string]Result),
 		query: make(chan cacheRequest),
-		fill: make(chan Validation),
+		fill: make(chan validators.Validation),
 	}
 
 	go c.run()

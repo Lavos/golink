@@ -1,11 +1,8 @@
-package golink
+package validators
 
 import (
-	"log"
 	"net/url"
 	"net/http"
-	"io/ioutil"
-	"encoding/json"
 )
 
 type GoogleSafeBrowsingv1 struct {
