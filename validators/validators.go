@@ -4,9 +4,9 @@ import (
 
 )
 
-var (
-	Validators []Validator
-)
+type Configuration struct {
+	string
+}
 
 type Validation struct {
 	ValidatorKey string
@@ -17,3 +17,5 @@ type Validation struct {
 type Validator interface {
 	Validate(url string, response chan Validation)
 }
+
+type ValidationSet []Validator

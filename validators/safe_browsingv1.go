@@ -6,12 +6,12 @@ import (
 )
 
 type GoogleSafeBrowsingv1 struct {
-
+	Apikey string
 }
 
 func (s *GoogleSafeBrowsingv1) Validate(checkurl string, response chan Validation) {
 	v := url.Values{}
-	v.Set("apikey", "ABQIAAAANzZNsoU24Ofp83gTQlx9xhTdfLkavSFRlhqu8kud5wNuQRJudg")
+	v.Set("apikey", s.Apikey)
 	v.Set("client", "golink")
 	v.Set("appver", "0.0.0.1")
 	v.Set("pver", "3.0")
@@ -27,5 +27,5 @@ func (s *GoogleSafeBrowsingv1) Validate(checkurl string, response chan Validatio
 }
 
 func init () {
-	Validators = append(Validators, &GoogleSafeBrowsingv1{})
+
 }

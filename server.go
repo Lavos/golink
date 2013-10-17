@@ -4,13 +4,17 @@ import (
 	"net/http"
 	"log"
 	"encoding/json"
-	// "fmt"
+	"github.com/Lavos/golink/validators"
 )
 
 type Application struct {
-	Port int
+	Address string
 
 	cache *Cache
+}
+
+type Configuration struct {
+	Address, GoogleAPIKey, AlexaAccessKeyID, AlexaSecretKey, PhishTankAppKey string
 }
 
 func (a *Application) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -24,13 +28,19 @@ func (a *Application) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (a *Application) Run() {
 	log.Print("started server")
-	http.ListenAndServe(":8000", a)
+	http.ListenAndServe(a.Address, a)
 }
 
-func NewApplication (port int) *Application {
+func NewApplication (c *Configuration) *Application {
+	v := &validators.ValidationSet{
+		&validators.GoogleSafeBrowsingv1{ c.GoogleAPIKey },
+		&validators.Alexa{ AccessKeyID: c.AlexaAccessKeyID, SecretKey: c.AlexaSecretKey },
+		&validators.PhishTank{ c.PhishTankAppKey },
+	}
+
 	a := &Application{
-		Port: port,
-		cache: newCache(),
+		Address: c.Address,
+		cache: newCache(v),
 	}
 
 	return a

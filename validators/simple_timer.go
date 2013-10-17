@@ -18,5 +18,5 @@ func (s *SimpleTimer) Validate(url string, response chan Validation) {
 }
 
 func init () {
-	Validators = append(Validators, &SimpleTimer{})
+
 }
