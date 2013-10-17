@@ -36,6 +36,7 @@ func NewApplication (c *Configuration) *Application {
 		&validators.GoogleSafeBrowsingv1{ c.GoogleAPIKey },
 		&validators.Alexa{ AccessKeyID: c.AlexaAccessKeyID, SecretKey: c.AlexaSecretKey },
 		&validators.PhishTank{ c.PhishTankAppKey },
+		&validators.SenderScore{ },
 	}
 
 	a := &Application{
