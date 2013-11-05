@@ -3,6 +3,7 @@ package golink
 import (
 	"net/http"
 	"log"
+	"os"
 	"encoding/json"
 	"github.com/Lavos/golink/validators"
 )
@@ -14,7 +15,7 @@ type Application struct {
 }
 
 type Configuration struct {
-	Address, GoogleAPIKey, AlexaAccessKeyID, AlexaSecretKey, PhishTankAppKey string
+	Address, GoogleAPIKey, AlexaAccessKeyID, AlexaSecretKey, PhishTankAppKey, AlexaTopSitesDB, ComscoreAdultSitesDB string
 }
 
 func (a *Application) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -28,20 +29,38 @@ func (a *Application) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (a *Application) Run() {
 	log.Print("started server")
-	http.ListenAndServe(a.Address, a)
+	go http.ListenAndServe(a.Address, a)
+
+	awaitQuitKey()
+}
+
+func awaitQuitKey() {
+	var buf [1]byte
+	for {
+		_, err := os.Stdin.Read(buf[:])
+		if err != nil || buf[0] == 'q' {
+			return
+		}
+	}
 }
 
 func NewApplication (c *Configuration) *Application {
-	v := &validators.ValidationSet{
+	blacklist := &validators.ValidationSet{
 		&validators.GoogleSafeBrowsingv1{ c.GoogleAPIKey },
-		&validators.Alexa{ AccessKeyID: c.AlexaAccessKeyID, SecretKey: c.AlexaSecretKey },
+		&validators.AlexaAdultContent{ AccessKeyID: c.AlexaAccessKeyID, SecretKey: c.AlexaSecretKey },
+		&validators.ComscoreAdultSites{ c.ComscoreAdultSitesDB },
 		&validators.PhishTank{ c.PhishTankAppKey },
 		&validators.SenderScore{ },
 	}
 
+	whitelist := &validators.ValidationSet{
+		&validators.AlexaTopSites{ c.AlexaTopSitesDB },
+		&validators.SpinMedia{ },
+	}
+
 	a := &Application{
 		Address: c.Address,
-		cache: newCache(v),
+		cache: newCache(blacklist, whitelist),
 	}
 
 	return a

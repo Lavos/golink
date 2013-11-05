@@ -16,7 +16,7 @@ type Result struct {
 type Cache struct {
 	urls map[string]Result
 
-	validationSet *validators.ValidationSet
+	blacklist, whitelist *validators.ValidationSet
 	query chan cacheRequest
 	fill chan validators.Validation
 }
@@ -39,7 +39,11 @@ func (c *Cache) Hit(url string) Result {
 }
 
 func (c *Cache) validateAll(url string) {
-	for _, v := range *c.validationSet {
+	for _, v := range *c.blacklist {
+		c.validateAgainst(v, url)
+	}
+
+	for _, v := range *c.whitelist {
 		c.validateAgainst(v, url)
 	}
 }
@@ -70,7 +74,7 @@ func (c *Cache) run() {
 
 			current.Validations[v.ValidatorKey] = v.Success
 
-			if len(current.Validations) == len(*c.validationSet) {
+			if len(current.Validations) == len(*c.blacklist) {
 				current.Status = "done"
 
 				d := "unmodify"
@@ -91,12 +95,13 @@ func (c *Cache) run() {
 	}
 }
 
-func newCache (v *validators.ValidationSet) *Cache {
+func newCache (blacklist, whitelist *validators.ValidationSet) *Cache {
 	c := &Cache{
 		urls: make(map[string]Result),
 		query: make(chan cacheRequest),
 		fill: make(chan validators.Validation),
-		validationSet: v,
+		blacklist: blacklist,
+		whitelist: whitelist,
 	}
 
 	go c.run()

@@ -35,11 +35,11 @@ type ContentData struct {
 	AdultContent string `xml:"AdultContent"`
 }
 
-type Alexa struct {
+type AlexaAdultContent struct {
 	AccessKeyID, SecretKey string
 }
 
-func (s *Alexa) Validate(checkurl string, response chan Validation) {
+func (s *AlexaAdultContent) Validate(checkurl string, response chan Validation) {
 	v := url.Values{}
 	v.Set("AWSAccessKeyId", s.AccessKeyID)
 	v.Set("Action", "UrlInfo")
@@ -82,7 +82,7 @@ func (s *Alexa) Validate(checkurl string, response chan Validation) {
 	log.Printf("%#v", xmldata)
 
 	response <- Validation{
-		ValidatorKey: "alexa",
+		ValidatorKey: "alexa_adult_content",
 		URL: checkurl,
 		Success: xmldata.Response.UrlInfoResult.Alexa.ContentData.AdultContent != "yes",
 	}
