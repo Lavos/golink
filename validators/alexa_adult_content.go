@@ -76,22 +76,20 @@ func (s *AlexaAdultContent) Validate(checkurl string, response chan Validation) 
 
 
 	v.Set("Signature", str)
-	log.Printf("v: %#v", v)
 
-	resp, _ := http.Get("http://awis.amazonaws.com/?" + v.Encode())
+	resp, err := http.Get("http://awis.amazonaws.com/?" + v.Encode())
 
-	log.Printf("v.encode: %#v", v.Encode())
+	if err != nil {
+		log.Printf("alexa adult content api: %#v", err)
+		response <- va
+		return
+	}
 
 	defer resp.Body.Close()
 	body, _ := ioutil.ReadAll(resp.Body)
 
-	log.Printf("resp: %#v", resp)
-	log.Printf("body: %#v", string(body))
-
 	var xmldata UrlInfoResponse
 	xml.Unmarshal(body, &xmldata)
-
-	log.Printf("%#v", xmldata)
 
 	va.Success = xmldata.Response.UrlInfoResult.Alexa.ContentData.AdultContent != "yes"
 	response <- va
