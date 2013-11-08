@@ -2,104 +2,131 @@ package golink
 
 import (
 	"log"
+	"encoding/json"
 	"github.com/Lavos/golink/validators"
 )
 
-type Result struct {
-	URL string `json:"url"`
-	Determination string `json:"determination,omitempty"`
-	Reason string `json:"reason,omitempty"`
-	Status string `json:"status"`
-	Validations map[string]bool `json:"validations"`
-}
-
 type Cache struct {
-	urls map[string]Result
+	links map[string]*Result
 
 	blacklist, whitelist *validators.ValidationSet
+	fillBlack, fillWhite chan validators.Validation
+
 	query chan cacheRequest
-	fill chan validators.Validation
 }
 
 type cacheRequest struct {
 	URL string
-	response chan Result
+	response chan []byte
+}
+
+type Result struct {
+	URL string `json:"url,omitempty"`
+	Determination string `json:"determination,omitempty"`
+	Reason string `json:"reason,omitempty"`
+	Status string `json:"status"`
+	WhiteList map[string]bool `json:"whitelist"`
+	BlackList map[string]bool `json:"blacklist"`
 }
 
 
-func (c *Cache) Hit(url string) Result {
+func (c *Cache) Hit(url string) []byte {
 	req := cacheRequest{
 		URL: url,
-		response: make(chan Result),
+		response: make(chan []byte),
 	}
 
 	c.query <- req
-	result := <-req.response
-	return result
+	return <-req.response
 }
 
 func (c *Cache) validateAll(url string) {
 	for _, v := range *c.blacklist {
-		c.validateAgainst(v, url)
+		c.validateAgainst(v, url, c.fillBlack)
 	}
 
 	for _, v := range *c.whitelist {
-		c.validateAgainst(v, url)
+		c.validateAgainst(v, url, c.fillWhite)
 	}
 }
 
-func (c *Cache) validateAgainst(v validators.Validator, url string) {
-	go v.Validate(url, c.fill)
+func (c *Cache) validateAgainst(v validators.Validator, url string, responsechan chan validators.Validation) {
+	go v.Validate(url, responsechan)
+}
+
+func (c *Cache) checkComplete(r *Result) {
+	if len(r.BlackList) + len(r.WhiteList) != len(*c.blacklist) + len(*c.whitelist) {
+		log.Print("not done.")
+		return
+	}
+
+	log.Print("DONE!")
+	r.Status = "done"
+
+	// blacklist logic
+	for _, b := range r.BlackList {
+		if !b {
+			r.Determination = "remove"
+			r.Reason = "blacklist failure"
+			return
+		}
+	}
+
+	// whitelist logic
+	for _, w := range r.WhiteList {
+		if w {
+			r.Determination = "unmodify"
+			r.Reason = "whitelist success"
+			return
+		}
+	}
+
+	r.Determination = "nofollow"
 }
 
 func (c *Cache) run() {
+	c.links = make(map[string]*Result)
+
 	for {
 		select {
 		case request := <-c.query:
-			if _, ok := c.urls[request.URL]; !ok {
-				c.urls[request.URL] = Result{
+			if _, ok := c.links[request.URL]; !ok {
+				c.links[request.URL] = &Result{
 					URL: request.URL,
-					Validations: make(map[string]bool),
 					Status: "validating",
+					WhiteList: make(map[string]bool),
+					BlackList: make(map[string]bool),
 				}
 
 				c.validateAll(request.URL)
 			}
 
-			request.response <- c.urls[request.URL]
+			result := c.links[request.URL]
+			b, _ := json.Marshal(result)
+			request.response <- b
 
-		case v := <-c.fill:
-			log.Printf("got from validator: %#v", v)
-			current := c.urls[v.URL]
+		case v := <-c.fillBlack:
+			log.Print("FILLBLACK")
 
-			current.Validations[v.ValidatorKey] = v.Success
+			r := c.links[v.URL]
+			r.BlackList[v.ValidatorKey] = v.Success;
+			c.checkComplete(r)
 
-			if len(current.Validations) == len(*c.blacklist) {
-				current.Status = "done"
+		case v := <-c.fillWhite:
+			log.Print("FILLWHITE")
 
-				d := "unmodify"
-
-				for _, b := range current.Validations {
-					if !b {
-						d = "remove"
-						break
-					}
-				}
-
-				log.Printf("%#v", d)
-				current.Determination = d
-			}
-
-			c.urls[v.URL] = current
+			r := c.links[v.URL]
+			r.WhiteList[v.ValidatorKey] = v.Success;
+			c.checkComplete(r)
 		}
 	}
 }
 
 func newCache (blacklist, whitelist *validators.ValidationSet) *Cache {
 	c := &Cache{
-		urls: make(map[string]Result),
 		query: make(chan cacheRequest),
-		fill: make(chan validators.Validation),
+		fillWhite: make(chan validators.Validation),
+		fillBlack: make(chan validators.Validation),
 		blacklist: blacklist,
 		whitelist: whitelist,
 	}

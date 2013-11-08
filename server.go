@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"log"
 	"os"
-	"encoding/json"
 	"github.com/Lavos/golink/validators"
 )
 
@@ -14,22 +13,30 @@ type Application struct {
 	cache *Cache
 }
 
+type Server struct {
+	cache *Cache
+}
+
 type Configuration struct {
 	Address, GoogleAPIKey, AlexaAccessKeyID, AlexaSecretKey, PhishTankAppKey, AlexaTopSitesDB, ComscoreAdultSitesDB string
 }
 
-func (a *Application) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	result := a.cache.Hit(r.URL.String()[1:])
+func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query().Get("q")
 
-	log.Printf("result: %#v", result)
-
-	b, _ := json.Marshal(result)
-	w.Write(b)
+	if q != "" {
+		result := s.cache.Hit(q)
+		w.Write(result)
+	} else {
+		w.WriteHeader(400)
+	}
 }
 
 func (a *Application) Run() {
 	log.Print("started server")
-	go http.ListenAndServe(a.Address, a)
+	s := &Server{ a.cache }
+
+	go http.ListenAndServe(a.Address, s)
 
 	awaitQuitKey()
 }

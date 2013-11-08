@@ -1,6 +1,7 @@
 package validators
 
 import (
+	"log"
 	"net"
 	"net/url"
 	"net/http"
@@ -33,13 +34,15 @@ func (s *SenderScore) Validate(checkurl string, response chan Validation) {
 }
 
 func (s *SenderScore) CheckBlacklist(ip net.IP) bool {
-	resp, _ := http.Get("https://www.senderscore.org/blacklistlookup/index.php?lookup=" + ip.String())
+	resp, err := http.Get("https://www.senderscore.org/blacklistlookup/index.php?lookup=" + ip.String())
+
+	if err != nil {
+		log.Printf("senderscore http error: %#v", err);
+		return false
+	}
+
 	defer resp.Body.Close()
 	body, _ := ioutil.ReadAll(resp.Body)
 
 	return bytes.HasPrefix(body, []byte("\n\nnoMessage="))
-}
-
-func init () {
-
 }

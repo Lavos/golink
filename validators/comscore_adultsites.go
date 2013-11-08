@@ -26,12 +26,15 @@ func (c *ComscoreAdultSites) Validate(checkurl string, response chan Validation)
 	root, err := GetRootDomain(checkurl)
 
 	if err != nil {
+		log.Printf("rootdomain err: %#v", err)
 		v.Success = false
 	} else {
 		var b []byte
 		sub, _ := db.Get(b, []byte(root))
 
-		if sub != nil {
+		log.Printf("com sub: %#v", sub)
+
+		if sub == nil {
 			v.Success = true
 		}
 	}
