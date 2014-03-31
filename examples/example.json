@@ -1,0 +1,9 @@
+{
+	"Address": ":8000",
+	"GoogleAPIKey": "",
+	"AlexaAccessKeyID": "",
+	"AlexaSecretKey": "",
+	"PhishTankAppKey": "",
+	"AlexaTopSitesDB": "path/to/alexa_topsites.kv",
+	"ComscoreAdultSitesDB": "path/to/comscore_adult.kv"
+}
